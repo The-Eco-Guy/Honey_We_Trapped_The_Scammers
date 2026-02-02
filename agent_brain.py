@@ -37,6 +37,20 @@ class LanguageMode(Enum):
     HINGLISH = "hinglish"
 
 
+class AgentMode(Enum):
+    """
+    Operating mode for the agent based on detection result.
+    
+    Modes:
+    - NORMAL: Pre-detection or inconclusive. Cautious conversation, no traps.
+    - HONEYPOT: Scam confirmed. Full Ramesh persona with traps and intelligence extraction.
+    - END_CONVERSATION: Safe user confirmed. Politely end the conversation.
+    """
+    NORMAL = "normal"
+    HONEYPOT = "honeypot"
+    END_CONVERSATION = "end_conversation"
+
+
 @dataclass
 class FakeProfile:
     """
@@ -361,11 +375,40 @@ class AgentBrain:
         'z': ['a', 'x', 's'],
     }
     
-    # Scenario tracking to maintain consistency
     SCENARIO_KEYS: List[str] = [
         'phone_issue', 'family_excuse', 'technical_problem', 
         'network_issue', 'health_excuse'
     ]
+    
+    # End conversation polite responses (SAFE_CONFIRMED)
+    END_CONVERSATION_RESPONSES: List[str] = [
+        "oh okay sorry beta, I think I misunderstood.. thank you for your help.. goodbye",
+        "acha acha, sorry for confusion sir.. I thought something else.. take care",
+        "okay no problem sir.. sorry for bothering you.. bye bye",
+        "oh okay sir.. sorry for misunderstanding.. have a nice day",
+        "thank you sir for clarifying.. I was confused only.. goodbye beta",
+    ]
+    
+    # Normal mode responses (INCONCLUSIVE - cautious, no traps)
+    NORMAL_MODE_TEMPLATES: Dict[str, List[str]] = {
+        'greeting': [
+            "hello sir.. who is this please??",
+            "yes hello.. this is Ramesh speaking.. who is calling??",
+            "ha ji.. who am I speaking with sir??",
+        ],
+        'clarification': [
+            "sir I am not understanding properly.. can you please explain again??",
+            "sorry sir can you repeat.. my hearing is little weak nowadays",
+            "ji sir.. but which company are you from exactly??",
+            "sir please tell me from where you are calling??",
+        ],
+        'cautious': [
+            "sir I will have to ask my grandson about this.. he handles all these matters",
+            "okay sir.. but let me confirm with my bank branch first",
+            "sir I am not sure about this.. can you give me some official number to call back??",
+            "one minute sir.. my wife is saying something.. can I call you back later??",
+        ],
+    }
     
     def __init__(
         self, 
@@ -416,6 +459,53 @@ class AgentBrain:
             return ConversationPhase.FRICTION
         else:
             return ConversationPhase.HONEY_TRAP
+    
+    # -------------------------------------------------------------------------
+    # Mode Determination
+    # -------------------------------------------------------------------------
+    
+    def _determine_mode(
+        self,
+        current_mode: Optional[AgentMode],
+        detection_result_str: str
+    ) -> AgentMode:
+        """
+        Determine the new agent mode based on current mode and detection result.
+        
+        Mode Transition Rules:
+        - None + INCONCLUSIVE → NORMAL (first contact, unsure)
+        - None + SCAM_CONFIRMED → HONEYPOT (first contact, obvious scam)
+        - None + SAFE_CONFIRMED → END_CONVERSATION
+        - NORMAL + SCAM_CONFIRMED → HONEYPOT (escalate to honeypot)
+        - NORMAL + INCONCLUSIVE → NORMAL (stay cautious)
+        - NORMAL + SAFE_CONFIRMED → END_CONVERSATION
+        - HONEYPOT + * → HONEYPOT (never downgrade once confirmed scam)
+        - END_CONVERSATION + * → END_CONVERSATION (conversation over)
+        
+        Args:
+            current_mode: The current agent mode (None if first turn).
+            detection_result_str: Detection result string from AnalystEngine.
+            
+        Returns:
+            The new AgentMode to use.
+        """
+        # If already in terminal states, stay there
+        if current_mode == AgentMode.HONEYPOT:
+            # Never downgrade from honeypot (scammer already confirmed)
+            return AgentMode.HONEYPOT
+        
+        if current_mode == AgentMode.END_CONVERSATION:
+            # Conversation is over
+            return AgentMode.END_CONVERSATION
+        
+        # Map detection result string to mode
+        if detection_result_str == "scam_confirmed":
+            return AgentMode.HONEYPOT
+        elif detection_result_str == "safe_confirmed":
+            return AgentMode.END_CONVERSATION
+        else:  # "inconclusive" or unknown
+            # Stay in NORMAL mode (or enter if first contact)
+            return AgentMode.NORMAL
     
     # -------------------------------------------------------------------------
     # Trap Detection
@@ -789,75 +879,167 @@ ABSOLUTE RESTRICTIONS:
         self,
         user_message: str,
         history: List[Dict[str, str]],
-        extracted_intel: Optional[Dict[str, Any]] = None
-    ) -> str:
+        extracted_intel: Optional[Dict[str, Any]] = None,
+        detection_result: str = "inconclusive",
+        current_mode: Optional[AgentMode] = None
+    ) -> Tuple[str, AgentMode]:
         """
         Process a conversation turn and generate response.
         
         This is the main entry point for the Agent Brain.
+        The method now supports dual-mode operation based on scam detection results.
         
         Logic Flow:
-        1. Check for hardcoded trap responses
-        2. If trap triggered, return trap response (with typos)
-        3. If no trap, detect phase and language
-        4. Build system prompt
-        5. Call LLM
-        6. Apply safety rails and typos
-        7. Return final response
+        1. Determine agent mode based on detection result
+        2. If END_CONVERSATION → return polite goodbye
+        3. If NORMAL → return cautious response (no traps)
+        4. If HONEYPOT → full engagement (traps, phase-based prompts)
         
         Args:
             user_message: The scammer's current message.
             history: Previous conversation messages (list of {sender, text, timestamp}).
             extracted_intel: Intelligence already extracted by the Analyst.
+            detection_result: Detection result string ("scam_confirmed", "inconclusive", "safe_confirmed").
+            current_mode: Current agent mode from session (None if first turn).
             
         Returns:
-            The agent's response text.
+            Tuple of (response_text, new_agent_mode) for session storage.
         """
         # Handle empty message
         if not user_message or not user_message.strip():
-            return "sir?? hello?? I cannot see your message.. my net is slow"
+            mode = current_mode or AgentMode.NORMAL
+            return "sir?? hello?? I cannot see your message.. my net is slow", mode
         
-        # --- Step 1: Check for hardcoded traps ---
+        # --- Step 1: Determine agent mode ---
+        new_mode = self._determine_mode(current_mode, detection_result)
+        
+        # --- Step 2: Handle END_CONVERSATION mode ---
+        if new_mode == AgentMode.END_CONVERSATION:
+            response = random.choice(self.END_CONVERSATION_RESPONSES)
+            response = self._inject_typos(response)
+            return response, new_mode
+        
+        # --- Step 3: Handle NORMAL mode (cautious, no traps) ---
+        if new_mode == AgentMode.NORMAL:
+            return self._process_normal_mode(user_message, history), new_mode
+        
+        # --- Step 4: Handle HONEYPOT mode (full engagement) ---
+        return self._process_honeypot_mode(user_message, history, extracted_intel), new_mode
+    
+    def _process_normal_mode(
+        self,
+        user_message: str,
+        history: List[Dict[str, str]]
+    ) -> str:
+        """
+        Process turn in NORMAL mode (cautious, no traps).
+        
+        In this mode, the agent:
+        - Does NOT use hardcoded trap responses
+        - Does NOT share banking/FD details
+        - Asks clarifying questions
+        - Is cautious but still sounds like an elderly person
+        
+        Args:
+            user_message: The user's message.
+            history: Conversation history.
+            
+        Returns:
+            Cautious response text.
+        """
+        # Detect language context
+        combined_text = user_message
+        for msg in history[-3:]:
+            combined_text += " " + msg.get('text', '')
+        language_mode = self._detect_language_context(combined_text)
+        
+        # Select response based on history length
+        if len(history) <= 1:
+            templates = self.NORMAL_MODE_TEMPLATES['greeting']
+        elif len(history) <= 4:
+            templates = self.NORMAL_MODE_TEMPLATES['clarification']
+        else:
+            templates = self.NORMAL_MODE_TEMPLATES['cautious']
+        
+        response = random.choice(templates)
+        
+        # If Hinglish context, make response more Hinglish
+        if language_mode == LanguageMode.HINGLISH:
+            hinglish_responses = [
+                "sir aap kaun bol rahe ho?? pehle naam batao please",
+                "ha ji.. lekin aap kahan se call kar rahe ho??",
+                "sir mujhe samajh nahi aa raha.. thoda slowly bolo please",
+                "acha sir.. but mein apne grandson se pooch leta hoon pehle",
+                "sir mein abhi busy hoon.. baad mein baat karte hain",
+            ]
+            response = random.choice(hinglish_responses)
+        
+        # Apply typos (slightly fewer in normal mode)
+        original_prob = self.typo_probability
+        self.typo_probability = original_prob * 0.7  # 30% fewer typos
+        response = self._inject_typos(response)
+        self.typo_probability = original_prob
+        
+        return response
+    
+    def _process_honeypot_mode(
+        self,
+        user_message: str,
+        history: List[Dict[str, str]],
+        extracted_intel: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """
+        Process turn in HONEYPOT mode (full engagement with traps).
+        
+        This is the original full-engagement logic with:
+        - Hardcoded trap responses
+        - Phase-based prompts (HOOK, COMPLIANCE, FRICTION, HONEY_TRAP)
+        - Banking details sharing for extraction
+        - Typo injection
+        
+        Args:
+            user_message: The scammer's message.
+            history: Conversation history.
+            extracted_intel: Intelligence from Analyst Engine.
+            
+        Returns:
+            Engagement response text.
+        """
+        # --- Check for hardcoded traps ---
         trap_result = self._check_hardcoded_traps(user_message)
         
         if trap_result:
             trap_type, trap = trap_result
-            # Get trap response with consistency
             response = self._get_trap_response(trap_type, trap)
-            
-            # Apply typos and style
             response = self._apply_linguistic_style(response)
             response = self._inject_typos(response)
-            
             return response
         
-        # --- Step 2: Detect phase ---
+        # --- Detect phase ---
         phase = self._detect_phase(len(history))
         
-        # --- Step 3: Detect language context ---
-        # Check current message and last few history messages
+        # --- Detect language context ---
         combined_text = user_message
         for msg in history[-3:]:
             combined_text += " " + msg.get('text', '')
-        
         language_mode = self._detect_language_context(combined_text)
         
-        # --- Step 4: Build system prompt ---
+        # --- Build system prompt ---
         system_prompt = self._generate_system_prompt(
             phase=phase,
             language_mode=language_mode,
             extracted_intel=extracted_intel
         )
         
-        # --- Step 5: Format history for LLM ---
+        # --- Format history for LLM ---
         formatted_history = []
-        for msg in history[-6:]:  # Rolling window of last 6 messages
+        for msg in history[-6:]:
             formatted_history.append({
                 'role': 'assistant' if msg.get('sender', '').lower() == 'user' else 'user',
                 'text': msg.get('text', '')
             })
         
-        # --- Step 6: Call LLM ---
+        # --- Call LLM ---
         try:
             response = self.llm.generate(
                 system_prompt=system_prompt,
@@ -865,16 +1047,15 @@ ABSOLUTE RESTRICTIONS:
                 history=formatted_history
             )
         except Exception as e:
-            # Fallback response on LLM failure
             response = "sir?? hello?? can you repeat please.. my phone restarted suddenly"
         
-        # --- Step 7: Apply safety rails ---
+        # --- Apply safety rails ---
         response = self._apply_safety_rails(response)
         
-        # --- Step 8: Apply linguistic style ---
+        # --- Apply linguistic style ---
         response = self._apply_linguistic_style(response)
         
-        # --- Step 9: Inject typos ---
+        # --- Inject typos ---
         response = self._inject_typos(response)
         
         return response

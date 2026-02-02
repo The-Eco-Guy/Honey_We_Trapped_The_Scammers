@@ -19,6 +19,36 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field, field_validator, model_validator
+from enum import Enum
+
+
+# =============================================================================
+# SECTION 0: DETECTION RESULT ENUM
+# =============================================================================
+
+class DetectionResult(Enum):
+    """
+    Classification of detection outcome based on confidence thresholds.
+    
+    Thresholds:
+    - SCAM_CONFIRMED: confidence >= 0.7 (high confidence scam)
+    - INCONCLUSIVE: 0.3 <= confidence < 0.7 (uncertain, needs more data)
+    - SAFE_CONFIRMED: confidence < 0.3 (likely safe conversation)
+    """
+    SCAM_CONFIRMED = "scam_confirmed"
+    INCONCLUSIVE = "inconclusive"
+    SAFE_CONFIRMED = "safe_confirmed"
+    
+    @classmethod
+    def from_confidence(cls, confidence: float) -> 'DetectionResult':
+        """Map confidence score to detection result."""
+        if confidence >= 0.7:
+            return cls.SCAM_CONFIRMED
+        elif confidence >= 0.3:
+            return cls.INCONCLUSIVE
+        else:
+            return cls.SAFE_CONFIRMED
+
 
 
 # =============================================================================
@@ -126,6 +156,10 @@ class AnalysisResult(BaseModel):
         ge=0.0,
         le=1.0,
         description="Confidence score from 0.0 to 1.0"
+    )
+    detection_result: DetectionResult = Field(
+        default=DetectionResult.INCONCLUSIVE,
+        description="Classification: scam_confirmed/inconclusive/safe_confirmed"
     )
     risk_category: str = Field(
         default="safe",
@@ -934,6 +968,7 @@ Response Format (JSON Only, no markdown):
                 return AnalysisResult(
                     is_scam=False,
                     confidence_score=0.0,
+                    detection_result=DetectionResult.SAFE_CONFIRMED,
                     risk_category="safe",
                     extracted_data=IntelligenceData(),
                     reason="Empty message received"
@@ -985,6 +1020,7 @@ Response Format (JSON Only, no markdown):
             result = AnalysisResult(
                 is_scam=is_scam,
                 confidence_score=confidence,
+                detection_result=DetectionResult.from_confidence(confidence),
                 risk_category=risk_category,
                 extracted_data=intelligence,
                 reason=reason
@@ -1003,6 +1039,7 @@ Response Format (JSON Only, no markdown):
             return AnalysisResult(
                 is_scam=True,  # Fail safe - engage user
                 confidence_score=0.5,
+                detection_result=DetectionResult.INCONCLUSIVE,  # Fail safe - be cautious
                 risk_category="unknown",
                 extracted_data=IntelligenceData(),
                 reason=f"Analysis error - defaulting to safe engagement: {str(e)}"
