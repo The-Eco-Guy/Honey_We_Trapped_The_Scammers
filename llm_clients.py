@@ -208,7 +208,7 @@ class GeminiAgentLLM(AgentLLMInterface):
             history: Previous conversation messages.
             
         Returns:
-            Generated response as Ramesh Gupta.
+            Generated response as Vikram Singh.
         """
         try:
             # Build the full prompt
@@ -217,20 +217,20 @@ class GeminiAgentLLM(AgentLLMInterface):
 CONVERSATION HISTORY:
 """
             for msg in history[-6:]:
-                role = "SCAMMER" if msg.get('role') == 'user' else "YOU (Ramesh)"
+                role = "SCAMMER" if msg.get('role') == 'user' else "YOU (Vikram)"
                 full_prompt += f"{role}: {msg.get('text', '')}\n"
             
             full_prompt += f"""
 SCAMMER: {user_message}
 
-YOUR RESPONSE (as Ramesh Gupta, confused elderly man):"""
+YOUR RESPONSE (as Vikram Singh, professional IT manager):"""
             
             response = self.model.generate_content(full_prompt)
             return response.text
             
         except Exception as e:
             print(f"[GeminiAgentLLM] API Error: {e}")
-            return "sir?? hello?? my phone suddenly hung.. what did you say??"
+            return "I am having some network issues. Can you please repeat what you said?"
 
 
 # =============================================================================

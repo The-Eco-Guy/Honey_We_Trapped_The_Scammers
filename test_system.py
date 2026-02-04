@@ -113,7 +113,7 @@ def main():
     )
     
     print(f"\n🤖 Agent Mode: {mode.value}")
-    print(f"\n💬 Response (as Ramesh Gupta):")
+    print(f"\n💬 Response (as Vikram Singh):")
     print(f"   {response}")
     
     # Cleanup
