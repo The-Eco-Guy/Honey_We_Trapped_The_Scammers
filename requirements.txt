@@ -1,0 +1,75 @@
+# =============================================================================
+# Requirements for Honey-Pot Scam Engagement System
+# =============================================================================
+# Install with: pip install -r requirements.txt
+# Recommended Python Version: 3.10+ (3.9 has deprecated support warnings)
+
+# -----------------------------------------------------------------------------
+# Core Dependencies (Required)
+# -----------------------------------------------------------------------------
+
+# Data validation and strict schema enforcement (v2 required for model_validate)
+pydantic>=2.0.0,<3.0.0
+
+# Environment variable loading from .env files
+python-dotenv>=1.0.0,<2.0.0
+
+# -----------------------------------------------------------------------------
+# LLM Integration (Required for real API calls)
+# -----------------------------------------------------------------------------
+
+# Google Gemini API client
+# Note: google-generativeai is deprecated in favor of google-genai
+# but google-genai requires significant code changes. Using the deprecated
+# version for now as it's still functional.
+google-generativeai>=0.8.0,<1.0.0
+
+# Alternative: For future migration to the new SDK, uncomment below:
+# google-genai>=1.0.0
+
+# -----------------------------------------------------------------------------
+# Web API Framework (Required for deploying the API endpoint)
+# -----------------------------------------------------------------------------
+
+# FastAPI - Modern, fast web framework for building APIs
+fastapi>=0.109.0,<1.0.0
+
+# Uvicorn - ASGI server for running FastAPI
+uvicorn[standard]>=0.27.0,<1.0.0
+
+# Requests - HTTP library for making callback requests to GUVI endpoint
+requests>=2.31.0,<3.0.0
+
+# -----------------------------------------------------------------------------
+# Optional but Recommended
+# -----------------------------------------------------------------------------
+
+# For better async support and HTTP client capabilities
+httpx>=0.26.0,<1.0.0
+
+# For JSON handling with better performance (optional)
+orjson>=3.9.0,<4.0.0
+
+# -----------------------------------------------------------------------------
+# Development & Testing (Optional)
+# -----------------------------------------------------------------------------
+
+# For testing
+pytest>=7.4.0,<8.0.0
+
+# For type checking
+mypy>=1.8.0,<2.0.0
+
+# For code formatting
+black>=24.0.0,<25.0.0
+
+# For import sorting
+isort>=5.13.0,<6.0.0
+
+# -----------------------------------------------------------------------------
+# Note: The following are part of Python's standard library (no install needed):
+# -----------------------------------------------------------------------------
+# - json, re, random, time, unicodedata
+# - dataclasses, abc, enum
+# - pathlib, datetime, argparse
+# - os, sys, typing

@@ -1,0 +1,23 @@
+{
+  "session_id": "sim_20260204_145742",
+  "created_at": "2026-02-04T14:57:42.329445",
+  "updated_at": "2026-02-04T14:57:42.329445",
+  "status": "active",
+  "current_mode": "NORMAL",
+  "turn_count": 0,
+  "turns": [],
+  "aggregated_intel": {
+    "upi_ids": [],
+    "phone_numbers": [],
+    "bank_accounts": [],
+    "urls": [],
+    "emails": [],
+    "crypto_wallets": [],
+    "social_handles": [],
+    "suspicious_keywords": []
+  },
+  "metadata": {
+    "simulator": true,
+    "started": "2026-02-04T14:57:42.329420"
+  }
+}

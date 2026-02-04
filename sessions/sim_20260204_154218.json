@@ -1,0 +1,109 @@
+{
+  "session_id": "sim_20260204_154218",
+  "created_at": "2026-02-04T15:42:18.191677",
+  "updated_at": "2026-02-04T15:44:39.862602",
+  "status": "active",
+  "current_mode": "NORMAL",
+  "turn_count": 5,
+  "turns": [
+    {
+      "turn_number": 1,
+      "timestamp": "2026-02-04T15:43:05.079041",
+      "scammer_message": "HI, how was your football game today?",
+      "agent_response": "hello sir.. who is this please??",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": []
+      }
+    },
+    {
+      "turn_number": 2,
+      "timestamp": "2026-02-04T15:43:24.130939",
+      "scammer_message": "i'm the guy you met at the stadium, remember me?",
+      "agent_response": "sir I am not understanding properly.. can you plsase explain again??",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": []
+      }
+    },
+    {
+      "turn_number": 3,
+      "timestamp": "2026-02-04T15:44:06.537197",
+      "scammer_message": "nothing don't worry. sorry for bothering you",
+      "agent_response": "skr pldase tell me from where you are messaging??",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": []
+      }
+    },
+    {
+      "turn_number": 4,
+      "timestamp": "2026-02-04T15:44:22.595176",
+      "scammer_message": "i'm currently at home in bangalore",
+      "agent_response": "sir I will have to ask my grandson about this.. he handles all these matters",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": []
+      }
+    },
+    {
+      "turn_number": 5,
+      "timestamp": "2026-02-04T15:44:39.862524",
+      "scammer_message": "what matters? what are you even talking",
+      "agent_response": "okay sir.. but let me confirm with my bank branch first",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": []
+      }
+    }
+  ],
+  "aggregated_intel": {
+    "upi_ids": [],
+    "phone_numbers": [],
+    "bank_accounts": [],
+    "urls": [],
+    "emails": [],
+    "crypto_wallets": [],
+    "social_handles": [],
+    "suspicious_keywords": []
+  },
+  "metadata": {
+    "simulator": true,
+    "started": "2026-02-04T15:42:18.191658"
+  }
+}
