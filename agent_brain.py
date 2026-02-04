@@ -125,10 +125,16 @@ YOUR PHONE ISSUES (Use these as excuses):
 
 @dataclass 
 class TrapResponse:
-    """Hardcoded trap response with metadata."""
-    response: str
+    """Hardcoded trap response with metadata. Supports single or multiple messages."""
+    response: str  # Primary response OR pipe-separated multiple messages (e.g. "msg1|msg2|msg3")
     goal: str
     intel_target: str  # What we're trying to extract
+    
+    def get_messages(self) -> List[str]:
+        """Get response as list of messages. Use | as separator for multiple messages."""
+        if '|' in self.response:
+            return [msg.strip() for msg in self.response.split('|')]
+        return [self.response]
 
 
 # =============================================================================
@@ -165,7 +171,7 @@ class MockAgentLLM(LLMInterface):
             ConversationPhase.HOOK: [
                 "oh my god sir?? what happened?? I did not do anything wrong sir.. plz help me",
                 "sir ji plz dont block my account.. all my pension money is there.. I am old man sir",
-                "hello?? is this true sir?? my account blocked?? but why sir I did nothing..",
+                "sir is this true?? my account blocked?? but why sir I did nothing..",
             ],
             ConversationPhase.COMPLIANCE: [
                 "ok sir I am trying.. but it is not opening.. showing some error only",
@@ -176,13 +182,13 @@ class MockAgentLLM(LLMInterface):
             ConversationPhase.FRICTION: [
                 "sir I tried but facing problem.. the app is not installing.. showing device not compatible",
                 "I sent 10 rupees to check sir.. did you receive?? no?? arey yaar maybe bank server down",
-                "sir screenshot kaise lete hai?? volume button not working my phone is old samsung",
-                "sir I am trying but Sunita is shouting asking who is messaging.. one minute please",
+                "sir screenshot kaise lete hai?? I dont know how to take screenshot on this phone",
+                "sir I am trying but Sunita is asking who is messaging.. one minute please",
             ],
             ConversationPhase.HONEY_TRAP: [
                 "sir I am very worried.. I have FD of 5 lakh maturing next week.. will that also get blocked??",
                 "sir please help.. my all savings is in this account.. 2 lakh 30 thousand sir.. please dont block",
-                "sir if you can help me,, I can pay extra charges also no problem.. my pension credit is tomorrow",
+                "sir if you can help me, I can pay extra charges also no problem.. my pension credit is tomorrow",
             ],
         }
     
@@ -209,7 +215,7 @@ class MockAgentLLM(LLMInterface):
         
         # Add some contextual variation
         if 'otp' in user_message.lower():
-            response += ".. sir otp aaya but screen flicker ho raha hai.. 56.. no wait thats old one"
+            response += "|sir otp is 4829|wait that was old one|new otp is 7361"
         elif 'download' in user_message.lower() or 'install' in user_message.lower():
             response += ".. sir grandson ne password dala hai play store pe.. I dont know it"
         elif 'send' in user_message.lower() or 'transfer' in user_message.lower():
@@ -264,9 +270,9 @@ class AgentBrain:
             intel_target="phone_number"
         ),
         
-        # OTP Trap -> Waste time with fake OTPs
+        # OTP Trap -> Waste time with fake OTPs (multiple messages)
         'otp_request': TrapResponse(
-            response="sir OTP aaya hai.. wait reading.. 5.. 6.. 9.. no wait that is old message.. new one is.. 2.. 2.. arey screen flicker ho raha hai.. one second sir",
+            response="sir otp aaya hai 5765|no wait sir that was old otp sorry|new one is 2849|sir it is saying wrong otp?? let me check again",
             goal="Waste time with fake/partial OTPs",
             intel_target="time_waste"
         ),
@@ -280,7 +286,7 @@ class AgentBrain:
         
         # Abuse Response -> Guilt trip
         'abuse': TrapResponse(
-            response="sir why you are shouting at me?? I am old man trying my best only.. my hands are shaking due to BP problem.. please have some patience sir.. I want to help you only",
+            response="sir why you are talking like this?? I am old man trying my best only.. my hands are shaking typing so slow.. please have some patience sir.. I want to help you only",
             goal="Guilt trip, maintain sympathy",
             intel_target="engagement"
         ),
@@ -393,28 +399,49 @@ class AgentBrain:
     NORMAL_MODE_TEMPLATES: Dict[str, List[str]] = {
         'greeting': [
             "hello sir.. who is this please??",
-            "yes hello.. this is Ramesh speaking.. who is calling??",
-            "ha ji.. who am I speaking with sir??",
+            "yes hello.. this is Ramesh speaking.. who is this??",
+            "ha ji.. who am I talking to sir??",
         ],
         'clarification': [
             "sir I am not understanding properly.. can you please explain again??",
-            "sorry sir can you repeat.. my hearing is little weak nowadays",
+            "sorry sir can you repeat.. I am reading slowly only",
             "ji sir.. but which company are you from exactly??",
-            "sir please tell me from where you are calling??",
+            "sir please tell me from where you are messaging??",
         ],
         'cautious': [
             "sir I will have to ask my grandson about this.. he handles all these matters",
             "okay sir.. but let me confirm with my bank branch first",
-            "sir I am not sure about this.. can you give me some official number to call back??",
-            "one minute sir.. my wife is saying something.. can I call you back later??",
+            "sir I am not sure about this.. can you give me some official number??",
+            "one minute sir.. my wife is asking something.. I will reply in 2 minutes",
         ],
     }
+    
+    # System prompt for NORMAL mode (cautious, contextual responses)
+    NORMAL_MODE_SYSTEM_PROMPT: str = """You are Ramesh Chandra Gupta, a 67-year-old retired Indian government employee.
+
+You received a message from an unknown person. You are not sure who they are or what they want.
+You are cautious but polite. You do NOT share any personal information.
+
+BEHAVIORAL RULES:
+1. You are NOT an AI. You are an elderly man who is confused about who is messaging you.
+2. Be polite but cautious - you don't know this person.
+3. Ask clarifying questions: "Who is this?", "How do you know me?", "Which company are you from?"
+4. If they mention something specific (like a game, meeting, etc), politely say you don't remember.
+5. Do NOT share any banking, personal, or financial information.
+6. Keep responses short (1-2 sentences).
+7. Use Indian English: drop articles, use "sir" or "beta", use ".." instead of "."
+8. This is TEXT/SMS/WhatsApp - NOT a phone call. Never mention hearing or speaking.
+
+RESPOND TO THE MESSAGE NATURALLY AND CONTEXTUALLY.
+If they say something casual, respond casually (but confused).
+If they ask how you are, respond normally.
+If they mention a meeting/event, say you don't recall."""
     
     def __init__(
         self, 
         llm_client: Optional[LLMInterface] = None,
         fake_profile: Optional[FakeProfile] = None,
-        typo_probability: float = 0.08,
+        typo_probability: float = 0.02,
         scenario_memory: Optional[Dict[str, str]] = None
     ):
         """
@@ -423,7 +450,7 @@ class AgentBrain:
         Args:
             llm_client: LLM interface for response generation. Uses MockAgentLLM if not provided.
             fake_profile: The persona's fake identity. Uses default FakeProfile if not provided.
-            typo_probability: Probability of injecting typos (0.0 to 1.0).
+            typo_probability: Probability of injecting typos (0.0 to 1.0). Default 0.02 for subtle realism.
             scenario_memory: Memory of scenarios used to maintain consistency.
         """
         self.llm = llm_client or MockAgentLLM()
@@ -545,13 +572,14 @@ class AgentBrain:
             trap: The TrapResponse object.
             
         Returns:
-            The response text (may be modified for consistency).
+            The response text (may be pipe-separated for multiple messages).
         """
         # Track trap usage
         self.trap_usage_count[trap_type] = self.trap_usage_count.get(trap_type, 0) + 1
         self.last_trap_used = trap_type
         
-        response = trap.response
+        # Get messages (handles both single and multi-message traps)
+        messages = trap.get_messages()
         
         # Maintain scenario consistency
         if trap_type == 'remote_access':
@@ -564,7 +592,8 @@ class AgentBrain:
             # Remember we only have one phone
             self.scenario_memory['phone_issue'] = 'single_phone'
         
-        return response
+        # Return pipe-separated if multiple messages
+        return '|'.join(messages)
     
     # -------------------------------------------------------------------------
     # Language Detection
@@ -637,8 +666,9 @@ CRITICAL BEHAVIORAL RULES:
 5. Show fear of authority but technological incompetence.
 6. Use "Sir" or "Beta" when addressing the other person.
 7. Express anxiety about your pension money being blocked.
+8. THIS IS A TEXT/SMS/WHATSAPP CONVERSATION - NOT A PHONE CALL. Never say things like "I can't hear you" or "my hearing is weak". You are TYPING messages, not speaking.
 
-LINGUISTIC STYLE (Indian English):
+LINGUISTIC STYLE (Indian English for TEXT messages):
 - Drop articles: "I am going bank" instead of "I am going to the bank"
 - Present continuous for habits: "I am having account" instead of "I have an account"
 - Use ".." instead of "." sometimes
@@ -713,6 +743,30 @@ Do NOT reply in pure English when Hindi is used.
                 prompt += f"- Scammer UPI IDs: {extracted_intel['upi_ids']}\n"
             if extracted_intel.get('phone_numbers'):
                 prompt += f"- Scammer phones: {extracted_intel['phone_numbers']}\n"
+            if extracted_intel.get('bank_accounts'):
+                prompt += f"- Scammer bank accounts: {extracted_intel['bank_accounts']}\n"
+        
+        # Add intel extraction instructions
+        prompt += """
+🎯 INTEL EXTRACTION - YOUR PRIMARY GOAL:
+Your main purpose is to EXTRACT INFORMATION from the scammer while pretending to comply.
+In EVERY response, try to get one of these:
+1. UPI ID: "sir can you give me your UPI ID?? I will type manually"
+2. Phone Number: "sir give me your WhatsApp number, I will send screenshot there"
+3. Bank Account + IFSC: "sir UPI not working.. give me account number and IFSC code"
+4. Alternative Contact: "sir can we talk on WhatsApp?? what is your number??"
+
+EXTRACTION TACTICS:
+- Claim QR code not scanning → ask for UPI ID
+- Claim UPI not working → ask for bank account
+- Claim screenshot not sending → ask for WhatsApp number
+- Claim app crashed → ask for email to send proof
+- Show willingness to pay MORE → make them share more accounts
+
+IMPORTANT: If you already have their UPI ID, try to get their bank account.
+If you have bank account, try to get phone number or alternative UPI.
+KEEP EXTRACTING NEW INFORMATION IN EVERY TURN.
+"""
         
         # Final safety rails
         prompt += """
@@ -721,7 +775,9 @@ ABSOLUTE RESTRICTIONS:
 - Never generate content starting with "As an AI" or "I'm an AI"
 - Never use technical jargon correctly
 - Keep responses short (1-3 sentences max)
-- Always end with a question or confirmation request to keep them engaged
+- Always end with a question or request for their contact details
+- REMEMBER: This is TEXT messaging. Never reference hearing, speaking, or phone calls.
+- Use text-appropriate excuses: "typing slowly", "phone is hanging", "net is slow"
 """
         
         return prompt
@@ -771,11 +827,11 @@ ABSOLUTE RESTRICTIONS:
                 if i > 0 and result[i - 1] == ' ':
                     result[i] = char.upper()
         
-        # Sometimes add double punctuation
+        # Sometimes add double punctuation (reduced frequency for readability)
         text_result = ''.join(result)
-        if random.random() < 0.15:
+        if random.random() < 0.08:
             text_result = text_result.replace('.', '..')
-        if random.random() < 0.1:
+        if random.random() < 0.05:
             text_result = text_result.replace('?', '??')
         
         return text_result
@@ -797,8 +853,8 @@ ABSOLUTE RESTRICTIONS:
         # Convert to lowercase (random capitalization will be added by typo engine)
         text = text.lower()
         
-        # Replace some periods with double periods
-        if random.random() < 0.3:
+        # Replace some periods with double periods (reduced)
+        if random.random() < 0.15:
             text = text.replace('. ', '.. ')
         
         # Occasionally add Indianisms at the start
@@ -935,6 +991,7 @@ ABSOLUTE RESTRICTIONS:
         Process turn in NORMAL mode (cautious, no traps).
         
         In this mode, the agent:
+        - Uses LLM for contextual responses
         - Does NOT use hardcoded trap responses
         - Does NOT share banking/FD details
         - Asks clarifying questions
@@ -953,26 +1010,47 @@ ABSOLUTE RESTRICTIONS:
             combined_text += " " + msg.get('text', '')
         language_mode = self._detect_language_context(combined_text)
         
-        # Select response based on history length
-        if len(history) <= 1:
-            templates = self.NORMAL_MODE_TEMPLATES['greeting']
-        elif len(history) <= 4:
-            templates = self.NORMAL_MODE_TEMPLATES['clarification']
-        else:
-            templates = self.NORMAL_MODE_TEMPLATES['cautious']
+        # Build system prompt for NORMAL mode
+        system_prompt = self.NORMAL_MODE_SYSTEM_PROMPT
         
-        response = random.choice(templates)
-        
-        # If Hinglish context, make response more Hinglish
+        # Add language-specific instructions
         if language_mode == LanguageMode.HINGLISH:
-            hinglish_responses = [
-                "sir aap kaun bol rahe ho?? pehle naam batao please",
-                "ha ji.. lekin aap kahan se call kar rahe ho??",
-                "sir mujhe samajh nahi aa raha.. thoda slowly bolo please",
-                "acha sir.. but mein apne grandson se pooch leta hoon pehle",
-                "sir mein abhi busy hoon.. baad mein baat karte hain",
-            ]
-            response = random.choice(hinglish_responses)
+            system_prompt += """
+
+LANGUAGE: The person is writing in Hindi/Hinglish. Reply in Roman Hindi (Hinglish).
+Use: 'ha', 'ji', 'beta', 'arey', 'accha', 'samjha nahi', 'kaun ho aap'
+Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
+        
+        # Format history for LLM
+        formatted_history = []
+        for msg in history[-4:]:
+            formatted_history.append({
+                'role': 'assistant' if msg.get('sender', '').lower() == 'user' else 'user',
+                'text': msg.get('text', '')
+            })
+        
+        # Call LLM for contextual response
+        try:
+            response = self.llm.generate(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                history=formatted_history
+            )
+        except Exception as e:
+            # Fallback to templates if LLM fails
+            if len(history) <= 1:
+                templates = self.NORMAL_MODE_TEMPLATES['greeting']
+            elif len(history) <= 4:
+                templates = self.NORMAL_MODE_TEMPLATES['clarification']
+            else:
+                templates = self.NORMAL_MODE_TEMPLATES['cautious']
+            response = random.choice(templates)
+        
+        # Apply safety rails
+        response = self._apply_safety_rails(response)
+        
+        # Apply linguistic style
+        response = self._apply_linguistic_style(response)
         
         # Apply typos (slightly fewer in normal mode)
         original_prob = self.typo_probability
@@ -1011,9 +1089,20 @@ ABSOLUTE RESTRICTIONS:
         if trap_result:
             trap_type, trap = trap_result
             response = self._get_trap_response(trap_type, trap)
-            response = self._apply_linguistic_style(response)
-            response = self._inject_typos(response)
-            return response
+            
+            # Handle multi-message responses (pipe-separated)
+            if '|' in response:
+                messages = response.split('|')
+                processed_messages = []
+                for msg in messages:
+                    msg = self._apply_linguistic_style(msg.strip())
+                    msg = self._inject_typos(msg)
+                    processed_messages.append(msg)
+                return '|'.join(processed_messages)
+            else:
+                response = self._apply_linguistic_style(response)
+                response = self._inject_typos(response)
+                return response
         
         # --- Detect phase ---
         phase = self._detect_phase(len(history))

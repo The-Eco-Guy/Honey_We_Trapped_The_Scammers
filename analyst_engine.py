@@ -131,6 +131,9 @@ class IntelligenceData(BaseModel):
     phone_numbers: List[str] = Field(default_factory=list, description="Phone numbers in E.164 format")
     bank_accounts: List[str] = Field(default_factory=list, description="Bank account numbers")
     urls: List[str] = Field(default_factory=list, description="Extracted URLs and phishing links")
+    emails: List[str] = Field(default_factory=list, description="Email addresses")
+    crypto_wallets: List[str] = Field(default_factory=list, description="Crypto wallet addresses")
+    ifsc_codes: List[str] = Field(default_factory=list, description="Bank IFSC codes")
     suspicious_keywords: List[str] = Field(default_factory=list, description="Detected suspicious keywords")
     
     @model_validator(mode='after')
@@ -140,6 +143,9 @@ class IntelligenceData(BaseModel):
         self.phone_numbers = list(dict.fromkeys(self.phone_numbers))
         self.bank_accounts = list(dict.fromkeys(self.bank_accounts))
         self.urls = list(dict.fromkeys(self.urls))
+        self.emails = list(dict.fromkeys(self.emails))
+        self.crypto_wallets = list(dict.fromkeys(self.crypto_wallets))
+        self.ifsc_codes = list(dict.fromkeys(self.ifsc_codes))
         self.suspicious_keywords = list(dict.fromkeys(self.suspicious_keywords))
         return self
 
@@ -454,6 +460,29 @@ class AnalystEngine:
             r'\b(' + '|'.join(escaped_keywords) + r')\b',
             re.IGNORECASE
         )
+        
+        # Email pattern
+        self.email_pattern = re.compile(
+            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            re.IGNORECASE
+        )
+        
+        # IFSC Code pattern (Indian bank identifier)
+        # Format: 4 alpha chars + 0 + 6 alphanumeric
+        self.ifsc_pattern = re.compile(
+            r'\b([A-Z]{4}0[A-Z0-9]{6})\b',
+            re.IGNORECASE
+        )
+        
+        # Crypto wallet patterns
+        # Bitcoin: starts with 1, 3, or bc1
+        # Ethereum: starts with 0x, 40 hex chars
+        # USDT/TRC20: starts with T
+        self.crypto_patterns = {
+            'bitcoin': re.compile(r'\b([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-HJ-NP-Z0-9]{39,59})\b'),
+            'ethereum': re.compile(r'\b(0x[a-fA-F0-9]{40})\b'),
+            'tron': re.compile(r'\b(T[a-zA-Z0-9]{33})\b'),
+        }
     
     # -------------------------------------------------------------------------
     # Module A: The Normalizer (De-obfuscation)
@@ -607,6 +636,30 @@ class AnalystEngine:
                 if keyword:
                     intelligence.suspicious_keywords.append(keyword.lower())
             
+            # --- Extract Emails ---
+            for search_text in search_texts:
+                email_matches = self.email_pattern.findall(search_text)
+                for email in email_matches:
+                    if email and '@' in email:
+                        # Skip if it looks like a UPI ID
+                        if not any(upi_handle in email.lower() for upi_handle in ['@ybl', '@paytm', '@okaxis', '@okicici', '@upi', '@gpay']):
+                            intelligence.emails.append(email.lower())
+            
+            # --- Extract IFSC Codes ---
+            for search_text in search_texts:
+                ifsc_matches = self.ifsc_pattern.findall(search_text)
+                for ifsc in ifsc_matches:
+                    if ifsc:
+                        intelligence.ifsc_codes.append(ifsc.upper())
+            
+            # --- Extract Crypto Wallets ---
+            for search_text in search_texts:
+                for crypto_type, pattern in self.crypto_patterns.items():
+                    matches = pattern.findall(search_text)
+                    for match in matches:
+                        if match:
+                            intelligence.crypto_wallets.append(match)
+            
         except Exception as e:
             print(f"[AnalystEngine] Extraction error: {e}")
         
@@ -615,6 +668,9 @@ class AnalystEngine:
         intelligence.phone_numbers = list(dict.fromkeys(intelligence.phone_numbers))
         intelligence.bank_accounts = list(dict.fromkeys(intelligence.bank_accounts))
         intelligence.urls = list(dict.fromkeys(intelligence.urls))
+        intelligence.emails = list(dict.fromkeys(intelligence.emails))
+        intelligence.crypto_wallets = list(dict.fromkeys(intelligence.crypto_wallets))
+        intelligence.ifsc_codes = list(dict.fromkeys(intelligence.ifsc_codes))
         intelligence.suspicious_keywords = list(dict.fromkeys(intelligence.suspicious_keywords))
         
         return intelligence
