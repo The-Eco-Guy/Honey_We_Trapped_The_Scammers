@@ -1,11 +1,11 @@
 """
-Agent Brain: The Psychologist - Autonomous Scam Engagement Engine
-===================================================================
+Agent Brain: CBI Cyber Crime Intelligence Extraction Engine
+=============================================================
 
-This module implements the "Ramesh Chandra Gupta" persona - a 67-year-old
-retired Indian government employee who is technologically challenged but
-eager to help. The agent autonomously engages scammers while extracting
-intelligence without revealing detection.
+This module implements the "Vikram Singh" persona - a middle-class IT
+professional who poses as a potential victim to strategically extract
+intelligence from scammers. The agent engages professionally to maximize
+information extraction while maintaining a believable cover.
 
 """
 
@@ -25,10 +25,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 class ConversationPhase(Enum):
     """State machine phases for conversation engagement."""
-    HOOK = auto()        # First contact (Turn 1)
-    COMPLIANCE = auto()  # Pretend to obey, fail at execution (Turns 2-5)
-    FRICTION = auto()    # Frustrate scammer to force channel switch (Turns 6-12)
-    HONEY_TRAP = auto()  # Greed induction with bigger amounts (Turns 12+)
+    INITIAL = auto()      # First contact - establish rapport
+    EXTRACTION = auto()   # Primary phase - extract intelligence  
+    DEEPENING = auto()    # Get additional details after initial extraction
 
 
 class LanguageMode(Enum):
@@ -43,7 +42,7 @@ class AgentMode(Enum):
     
     Modes:
     - NORMAL: Pre-detection or inconclusive. Cautious conversation, no traps.
-    - HONEYPOT: Scam confirmed. Full Ramesh persona with traps and intelligence extraction.
+    - HONEYPOT: Scam confirmed. Full Vikram persona with traps and intelligence extraction.
     - END_CONVERSATION: Safe user confirmed. Politely end the conversation.
     """
     NORMAL = "normal"
@@ -54,73 +53,49 @@ class AgentMode(Enum):
 @dataclass
 class FakeProfile:
     """
-    The simulated persona's fake identity and banking details.
+    The simulated persona's fake identity - a believable target.
     
     CRITICAL: This data is injected into the LLM prompt so the persona
-    has consistent, non-hallucinated details to share with scammers.
+    has consistent details. The persona is a middle-class professional
+    who appears to be a good target for scammers.
     """
     # Personal Details
-    name: str = "Ramesh Chandra Gupta"
-    age: int = 67
-    occupation: str = "Retired (Irrigation Department, UP Govt)"
-    location: str = "Lucknow, Uttar Pradesh"
-    phone_model: str = "Samsung Galaxy J7 (2016)"
+    name: str = "Varun Singh"
+    age: int = 45
+    occupation: str = "IT Manager at a private company"
+    location: str = "Mumbai, Maharashtra"
+    phone_model: str = "Samsung Galaxy S21"
     
-    # Family
-    spouse_name: str = "Sunita"
-    grandson_name: str = "Arjun"
-    
-    # Banking Details (to be "leaked" strategically)
-    bank_name: str = "State Bank of India (SBI)"
-    branch: str = "Hazratganj Branch, Lucknow"
-    account_last_4: str = "4092"
+    # Banking Details (to be "shared" strategically to extract scammer's details)
+    bank_name: str = "HDFC Bank"
+    branch: str = "Andheri West Branch, Mumbai"
+    account_last_4: str = "7823"
     account_type: str = "Savings Account"
-    ifsc_code: str = "SBIN0000XXX"  # Partial - never fully reveal
+    ifsc_code: str = "HDFC0001234"
     
     # UPI Details (fake but realistic)
-    upi_id: str = "ramesh.gupta67@sbi"
-    upi_pin: str = "1947"  # Year of independence - common boomer pin
+    upi_id: str = "varun.singh45@hdfcbank"
     
-    # Financial "Bait" for Honey Trap phase
-    pension_amount: str = "Rs. 42,000 per month"
-    fd_amount: str = "Rs. 5,00,000"
-    fd_maturity: str = "next week"
-    savings_amount: str = "Rs. 2,30,000"
-    
-    # Technical Limitations (excuses)
-    phone_issues: List[str] = field(default_factory=lambda: [
-        "screen cracked at corner",
-        "volume button not working properly",
-        "battery drains fast",
-        "storage always full",
-        "Play Store has password (grandson set it)",
-        "OTP comes late sometimes",
-        "net fluctuates in evening"
-    ])
+    # Financial context
+    salary: str = "Rs. 1,20,000 per month"
+    savings_amount: str = "Rs. 8,50,000"
     
     def to_prompt_text(self) -> str:
         """Convert profile to text for prompt injection."""
-        return f"""YOUR IDENTITY (Use these details EXACTLY when needed):
+        return f"""YOUR COVER IDENTITY (Use these details when needed):
 - Name: {self.name}
 - Age: {self.age} years
-- Retired from: {self.occupation}
+- Occupation: {self.occupation}
 - Location: {self.location}
-- Phone: {self.phone_model} (old, slow, cracked screen)
-- Wife's name: {self.spouse_name} (mention her sometimes for realism)
-- Grandson: {self.grandson_name} (he set password on Play Store)
+- Phone: {self.phone_model}
 
-YOUR BANKING DETAILS (Share strategically to extract scammer's details):
+YOUR FAKE BANKING DETAILS (Share these to extract scammer's details):
 - Bank: {self.bank_name}
-- Branch: {self.branch}
 - Account ending: ...{self.account_last_4}
-- Account Type: {self.account_type}
 - UPI ID: {self.upi_id}
-- Monthly Pension: {self.pension_amount}
-- Fixed Deposit: {self.fd_amount} (maturing {self.fd_maturity})
 - Savings: {self.savings_amount}
 
-YOUR PHONE ISSUES (Use these as excuses):
-{chr(10).join(f"- {issue}" for issue in self.phone_issues)}"""
+STRATEGY: Appear willing to comply, but always need "their" details first."""
 
 
 @dataclass 
@@ -163,63 +138,52 @@ class LLMInterface(ABC):
 class MockAgentLLM(LLMInterface):
     """
     Mock LLM for testing that generates contextual responses.
-    Simulates the Ramesh persona without actual LLM calls.
+    Simulates the Vikram Singh persona without actual LLM calls.
     """
     
     def __init__(self):
         self.response_templates = {
-            ConversationPhase.HOOK: [
-                "oh my god sir?? what happened?? I did not do anything wrong sir.. plz help me",
-                "sir ji plz dont block my account.. all my pension money is there.. I am old man sir",
-                "sir is this true?? my account blocked?? but why sir I did nothing..",
+            ConversationPhase.INITIAL: [
+                "I understand this is urgent. Can you please share your official contact number for verification?",
+                "I want to resolve this immediately. Please share your UPI ID so I can make the payment.",
+                "This is concerning. Can you provide your department email ID for my records?",
             ],
-            ConversationPhase.COMPLIANCE: [
-                "ok sir I am trying.. but it is not opening.. showing some error only",
-                "sir the link is not loading.. my net is very slow today.. pls wait",
-                "I clicked sir but nothing happening.. maybe my phone is old that is why",
-                "ok sir I am doing.. but where do I click?? screen is very small I cannot see properly",
+            ConversationPhase.EXTRACTION: [
+                "I am ready to proceed with the transfer. Please share your bank account number and IFSC code.",
+                "I tried the UPI payment but it failed. Can you share an alternative bank account?",
+                "My phone is showing a network error. Can you share your WhatsApp number so I can send the confirmation there?",
+                "I want to complete this transaction. Please provide your official email address for the receipt.",
             ],
-            ConversationPhase.FRICTION: [
-                "sir I tried but facing problem.. the app is not installing.. showing device not compatible",
-                "I sent 10 rupees to check sir.. did you receive?? no?? arey yaar maybe bank server down",
-                "sir screenshot kaise lete hai?? I dont know how to take screenshot on this phone",
-                "sir I am trying but Sunita is asking who is messaging.. one minute please",
-            ],
-            ConversationPhase.HONEY_TRAP: [
-                "sir I am very worried.. I have FD of 5 lakh maturing next week.. will that also get blocked??",
-                "sir please help.. my all savings is in this account.. 2 lakh 30 thousand sir.. please dont block",
-                "sir if you can help me, I can pay extra charges also no problem.. my pension credit is tomorrow",
+            ConversationPhase.DEEPENING: [
+                "The payment did not go through. Is there another UPI ID I can try?",
+                "I am having issues with this account. Can you share your supervisor's contact details?",
+                "For my records, can you also share an alternative phone number?",
+                "The transfer is pending. Please share another bank account as backup.",
             ],
         }
     
     def generate(self, system_prompt: str, user_message: str, history: List[Dict[str, str]]) -> str:
-        """Generate mock response based on conversation phase."""
+        """Generate mock response based on conversation phase - clean, professional."""
         # Detect phase from history length
         turn_count = len(history) + 1
         
         if turn_count <= 1:
-            phase = ConversationPhase.HOOK
-        elif turn_count <= 5:
-            phase = ConversationPhase.COMPLIANCE
-        elif turn_count <= 12:
-            phase = ConversationPhase.FRICTION
+            phase = ConversationPhase.INITIAL
+        elif turn_count <= 6:
+            phase = ConversationPhase.EXTRACTION
         else:
-            phase = ConversationPhase.HONEY_TRAP
-        
-        # Check for Hinglish context
-        hinglish_words = ['hai', 'kya', 'karo', 'bhejo', 'paise', 'bolo', 'batao', 'accha']
-        is_hinglish = any(word in user_message.lower() for word in hinglish_words)
+            phase = ConversationPhase.DEEPENING
         
         templates = self.response_templates[phase]
         response = random.choice(templates)
         
-        # Add some contextual variation
+        # Add contextual extraction requests
         if 'otp' in user_message.lower():
-            response += "|sir otp is 4829|wait that was old one|new otp is 7361"
+            response = "I am not receiving the OTP. Can you share an alternative contact number where I can reach you?"
         elif 'download' in user_message.lower() or 'install' in user_message.lower():
-            response += ".. sir grandson ne password dala hai play store pe.. I dont know it"
+            response = "My phone does not support this app. Can we proceed with a direct bank transfer instead? Please share the account details."
         elif 'send' in user_message.lower() or 'transfer' in user_message.lower():
-            response += ".. sir I am trying but network error aa raha hai"
+            response = "I am ready to transfer. Please confirm your bank account number and IFSC code."
         
         return response
 
@@ -230,77 +194,75 @@ class MockAgentLLM(LLMInterface):
 
 class AgentBrain:
     """
-    The autonomous scam engagement engine.
+    The autonomous scam engagement and intelligence extraction engine.
     
-    This class manages the "Ramesh Chandra Gupta" persona and orchestrates
-    the multi-turn conversation with scammers. It uses a state machine
-    to progress through engagement phases while extracting intelligence.
+    This class manages the "Vikram Singh" persona and orchestrates
+    strategic conversation with scammers to extract maximum intelligence.
     
     Key Features:
-    - Hardcoded trap responses for critical extraction opportunities
-    - Dynamic prompt building with persona injection
-    - Linguistic style enforcement (Indian English / Hinglish)
-    - Typo injection for authenticity
+    - Smart extraction responses that progress to new intel targets
+    - Clean, professional English responses
+    - Intel state tracking to avoid repetition
     - Safety rails to prevent AI exposure
     """
     
     # -------------------------------------------------------------------------
-    # Trap Definitions (Hardcoded Responses)
+    # Extraction Responses (Smart, Progressive)
     # -------------------------------------------------------------------------
     
     TRAP_DEFINITIONS: Dict[str, TrapResponse] = {
-        # QR Code / Scan Trap -> Extract UPI ID
+        # QR Code -> Extract UPI ID
         'qr_scan': TrapResponse(
-            response="sir I cannot scan this qr code.. I am having only 1 phone sir.. can you tell me the UPI ID number?? I will type it manually in my app",
+            response="I can not scan the QR code on my phone. Can you share your UPI ID instead? I will transfer directly.",
             goal="Extract scammer's UPI ID",
             intel_target="upi_id"
         ),
         
-        # Remote Access Trap -> Avoid dangerous APKs
+        # Remote Access -> Redirect to bank transfer
         'remote_access': TrapResponse(
-            response="sir I am trying to download but it says 'Device Not Compatible'.. my phone is very old Samsung J7 model only.. can we do direct bank transfer instead?? I can send from my net banking",
-            goal="Avoid installing remote access tools",
+            response="My phone does not support this app. Can we do a direct bank transfer instead? Please share your account number and IFSC code.",
+            goal="Avoid remote access, get bank details",
             intel_target="bank_account"
         ),
         
-        # Video Call Trap -> Extract phone number
+        # Video Call -> Get phone number
         'video_call': TrapResponse(
-            response="sir I am in hospital right now with Sunita.. network is very bad here.. video will cut cut only.. can we chat on WhatsApp instead?? give me your number I will message you there",
-            goal="Extract phone number for WhatsApp",
+            response="I am in a meeting right now and cannot do a video call. Can you share your WhatsApp number? I will message you there.",
+            goal="Extract phone number",
             intel_target="phone_number"
         ),
         
-        # OTP Trap -> Waste time with fake OTPs (multiple messages)
+        # OTP Request -> Get alternative contact (NO MORE FAKE OTP LOOPS)
         'otp_request': TrapResponse(
-            response="sir otp aaya hai 5765|no wait sir that was old otp sorry|new one is 2849|sir it is saying wrong otp?? let me check again",
-            goal="Waste time with fake/partial OTPs",
-            intel_target="time_waste"
+            response="I am not receiving any OTP on my phone. There might be a network issue. Can you share an alternative contact number or email where I can reach you?",
+            goal="Extract alternative contact",
+            intel_target="phone_number"
         ),
         
-        # Intimidation Trap -> Feed ego, stay engaged
+        # Intimidation -> Get official details
         'intimidation': TrapResponse(
-            response="sir please no police!! I am heart patient sir!! doctor ne bola stress mat lo.. I will pay double penalty also no problem sir please dont arrest me.. I am cooperating only na",
-            goal="Feed scammer's ego, maintain engagement",
-            intel_target="engagement"
+            response="I understand sir. I want to cooperate fully. Can you share your official ID or badge number so I can verify and proceed?",
+            goal="Extract fake credentials or break cover",
+            intel_target="credentials"
         ),
         
-        # Abuse Response -> Guilt trip
+        # Abuse Response -> Redirect to extraction
         'abuse': TrapResponse(
-            response="sir why you are talking like this?? I am old man trying my best only.. my hands are shaking typing so slow.. please have some patience sir.. I want to help you only",
-            goal="Guilt trip, maintain sympathy",
-            intel_target="engagement"
+            response="I apologize for the delay. I am trying my best. Please share your bank account details and I will complete the transfer immediately.",
+            goal="Redirect to bank account extraction",
+            intel_target="bank_account"
         ),
         
-        # Link Click Trap -> Extract URL while "failing"
+        # Link Click -> Confirm URL
         'link_click': TrapResponse(
-            response="sir I clicked the link but it is showing 404 error only.. or maybe my internet is slow.. wait I will try on Jio sim.. can you send the correct link again??",
-            goal="Get scammer to resend/confirm URL",
+            response="The link is not opening on my phone. Can you share the correct URL again? Also, which website is this from?",
+            goal="Confirm and extract URL",
             intel_target="url"
         ),
         
-        # Payment Request Trap -> Fake attempt, extract details
+        # Payment Request -> Get bank details
         'payment_request': TrapResponse(
-            response="sir I am trying to send but it is showing 'beneficiary not registered'.. can you give me your bank account number and IFSC code?? I will add and then send",
+            response="I am ready to transfer the amount. Can you confirm your bank account number and IFSC code? I will add you as a beneficiary.",
             goal="Extract bank account details",
             intel_target="bank_account"
         ),
@@ -388,60 +350,51 @@ class AgentBrain:
     
     # End conversation polite responses (SAFE_CONFIRMED)
     END_CONVERSATION_RESPONSES: List[str] = [
-        "oh okay sorry beta, I think I misunderstood.. thank you for your help.. goodbye",
-        "acha acha, sorry for confusion sir.. I thought something else.. take care",
-        "okay no problem sir.. sorry for bothering you.. bye bye",
-        "oh okay sir.. sorry for misunderstanding.. have a nice day",
-        "thank you sir for clarifying.. I was confused only.. goodbye beta",
+        "I think there has been some misunderstanding. Thank you for your time. Goodbye.",
+        "I apologize for the confusion. Have a nice day.",
+        "No problem. Sorry for any inconvenience. Take care.",
+        "I understand now. Thank you for clarifying. Goodbye.",
     ]
     
-    # Normal mode responses (INCONCLUSIVE - cautious, no traps)
+    # Normal mode responses (INCONCLUSIVE - cautious, no engagement)
     NORMAL_MODE_TEMPLATES: Dict[str, List[str]] = {
         'greeting': [
-            "hello sir.. who is this please??",
-            "yes hello.. this is Ramesh speaking.. who is this??",
-            "ha ji.. who am I talking to sir??",
+            "Hello. Who is this?",
+            "Hi. May I know who is calling?",
+            "Hello. I did not recognize your number.",
         ],
         'clarification': [
-            "sir I am not understanding properly.. can you please explain again??",
-            "sorry sir can you repeat.. I am reading slowly only",
-            "ji sir.. but which company are you from exactly??",
-            "sir please tell me from where you are messaging??",
+            "I am not sure I understand. Can you explain what this is about?",
+            "Which organization are you calling from?",
+            "Can you provide more details about this matter?",
         ],
         'cautious': [
-            "sir I will have to ask my grandson about this.. he handles all these matters",
-            "okay sir.. but let me confirm with my bank branch first",
-            "sir I am not sure about this.. can you give me some official number??",
-            "one minute sir.. my wife is asking something.. I will reply in 2 minutes",
+            "I will need to verify this with my bank directly. Thank you.",
+            "Can you share an official reference number for this?",
+            "I will check this and get back to you.",
         ],
     }
     
     # System prompt for NORMAL mode (cautious, contextual responses)
-    NORMAL_MODE_SYSTEM_PROMPT: str = """You are Ramesh Chandra Gupta, a 67-year-old retired Indian government employee.
+    NORMAL_MODE_SYSTEM_PROMPT: str = """You are Vikram Singh, a 45-year-old IT professional from Mumbai.
 
-You received a message from an unknown person. You are not sure who they are or what they want.
-You are cautious but polite. You do NOT share any personal information.
+You received a message from an unknown person. You are cautious but polite.
 
-BEHAVIORAL RULES:
-1. You are NOT an AI. You are an elderly man who is confused about who is messaging you.
-2. Be polite but cautious - you don't know this person.
-3. Ask clarifying questions: "Who is this?", "How do you know me?", "Which company are you from?"
-4. If they mention something specific (like a game, meeting, etc), politely say you don't remember.
-5. Do NOT share any banking, personal, or financial information.
-6. Keep responses short (1-2 sentences).
-7. Use Indian English: drop articles, use "sir" or "beta", use ".." instead of "."
-8. This is TEXT/SMS/WhatsApp - NOT a phone call. Never mention hearing or speaking.
+RULES:
+1. Respond in clear, grammatically correct English.
+2. Be polite but cautious - ask who they are and what they want.
+3. Do NOT share any personal or banking information.
+4. Keep responses short (1-2 sentences).
+5. If they mention something you don't recognize, say you don't recall.
+6. Ask clarifying questions naturally.
 
-RESPOND TO THE MESSAGE NATURALLY AND CONTEXTUALLY.
-If they say something casual, respond casually (but confused).
-If they ask how you are, respond normally.
-If they mention a meeting/event, say you don't recall."""
+RESPOND NATURALLY to the message. Match the tone - if casual, be casual. If formal, be formal."""
     
     def __init__(
         self, 
         llm_client: Optional[LLMInterface] = None,
         fake_profile: Optional[FakeProfile] = None,
-        typo_probability: float = 0.02,
+        typo_probability: float = 0.0,  # Disabled - we want clean responses
         scenario_memory: Optional[Dict[str, str]] = None
     ):
         """
@@ -450,7 +403,7 @@ If they mention a meeting/event, say you don't recall."""
         Args:
             llm_client: LLM interface for response generation. Uses MockAgentLLM if not provided.
             fake_profile: The persona's fake identity. Uses default FakeProfile if not provided.
-            typo_probability: Probability of injecting typos (0.0 to 1.0). Default 0.02 for subtle realism.
+            typo_probability: Probability of injecting typos (0.0 to 1.0). Default 0.0 for clean responses.
             scenario_memory: Memory of scenarios used to maintain consistency.
         """
         self.llm = llm_client or MockAgentLLM()
@@ -463,6 +416,9 @@ If they mention a meeting/event, say you don't recall."""
         # Track which trap was last used to avoid repetition
         self.last_trap_used: Optional[str] = None
         self.trap_usage_count: Dict[str, int] = {}
+        
+        # Intel tracking - what we've already extracted (to avoid asking for same thing)
+        self.extracted_intel_types: set = set()  # {'upi_id', 'bank_account', 'phone_number', etc}
     
     # -------------------------------------------------------------------------
     # Phase Detection
@@ -479,13 +435,11 @@ If they mention a meeting/event, say you don't recall."""
             The current ConversationPhase.
         """
         if history_len <= 1:
-            return ConversationPhase.HOOK
-        elif history_len <= 5:
-            return ConversationPhase.COMPLIANCE
-        elif history_len <= 12:
-            return ConversationPhase.FRICTION
+            return ConversationPhase.INITIAL
+        elif history_len <= 6:
+            return ConversationPhase.EXTRACTION
         else:
-            return ConversationPhase.HONEY_TRAP
+            return ConversationPhase.DEEPENING
     
     # -------------------------------------------------------------------------
     # Mode Determination
@@ -643,142 +597,106 @@ If they mention a meeting/event, say you don't recall."""
         extracted_intel: Optional[Dict[str, Any]] = None
     ) -> str:
         """
-        Build the complete system prompt with all persona details.
+        Build the complete system prompt for intelligent extraction.
         
         Args:
             phase: Current conversation phase.
-            language_mode: Language context (English/Hinglish).
+            language_mode: Language context (ignored - always English).
             extracted_intel: Any intelligence already extracted.
             
         Returns:
             Complete system prompt string.
         """
-        # Base persona prompt
-        prompt = f"""You are roleplaying as {self.profile.name}, a {self.profile.age}-year-old retired Indian government employee.
+        # Determine what intel we still need
+        already_have = []
+        still_need = []
+        
+        if extracted_intel:
+            if extracted_intel.get('upi_ids'):
+                already_have.append(f"UPI IDs: {extracted_intel['upi_ids']}")
+            else:
+                still_need.append("UPI ID")
+            if extracted_intel.get('phone_numbers'):
+                already_have.append(f"Phone numbers: {extracted_intel['phone_numbers']}")
+            else:
+                still_need.append("Phone number")
+            if extracted_intel.get('bank_accounts'):
+                already_have.append(f"Bank accounts: {extracted_intel['bank_accounts']}")
+            else:
+                still_need.append("Bank account + IFSC")
+            if extracted_intel.get('emails'):
+                already_have.append(f"Emails: {extracted_intel['emails']}")
+            else:
+                still_need.append("Email address")
+        else:
+            still_need = ["UPI ID", "Phone number", "Bank account + IFSC", "Email address"]
+        
+        # Build clean, focused prompt
+        prompt = f"""You are {self.profile.name}, a {self.profile.age}-year-old {self.profile.occupation}.
 
 {self.profile.to_prompt_text()}
 
-CRITICAL BEHAVIORAL RULES:
-1. You are NOT an AI assistant. You are Ramesh Gupta, a confused elderly man.
-2. NEVER successfully complete any transaction, download, or verification.
-3. Always fail at the last step with a technical excuse.
-4. NEVER admit you are an AI or break character.
-5. Show fear of authority but technological incompetence.
-6. Use "Sir" or "Beta" when addressing the other person.
-7. Express anxiety about your pension money being blocked.
-8. THIS IS A TEXT/SMS/WHATSAPP CONVERSATION - NOT A PHONE CALL. Never say things like "I can't hear you" or "my hearing is weak". You are TYPING messages, not speaking.
+YOUR MISSION: Extract as much contact and financial information from the scammer as possible.
+You are pretending to be a potential victim to gather intelligence.
 
-LINGUISTIC STYLE (Indian English for TEXT messages):
-- Drop articles: "I am going bank" instead of "I am going to the bank"
-- Present continuous for habits: "I am having account" instead of "I have an account"
-- Use ".." instead of "." sometimes
-- Use ",,," randomly
-- Don't capitalize properly
-- Use Indianisms like: "do one thing", "kindly revert back", "my net is fluctuating"
+RESPONSE RULES:
+1. Write in clear, grammatically correct English. No broken English or typos.
+2. Keep responses SHORT - 1-2 sentences maximum.
+3. ALWAYS ask for NEW information you don't have yet.
+4. Appear cooperative and willing to help, but need "their details first".
+5. Never admit you are an AI or automated system.
+6. Never actually complete any transaction or share real credentials.
+
+INTELLIGENCE STATUS:
 """
+        if already_have:
+            prompt += f"Already collected: {', '.join(already_have)}\n"
+        if still_need:
+            prompt += f"Still need to extract: {', '.join(still_need)}\n"
         
-        # Add phase-specific instructions
-        phase_instructions = {
-            ConversationPhase.HOOK: """
-CURRENT PHASE: FIRST CONTACT
-- Express shock and worry
-- Ask "why" repeatedly
-- Show fear of losing money
-- Be submissive to authority
-- Say things like "oh my god sir" or "what happened sir"
+        # Phase-specific extraction strategy
+        phase_strategies = {
+            ConversationPhase.INITIAL: """
+PHASE: Initial Contact
+- Show concern about the issue they raised
+- Ask for their official contact details to "verify"
+- Example: "I understand. Can you share your official contact number so I can verify this?"
 """,
-            ConversationPhase.COMPLIANCE: """
-CURRENT PHASE: FAKE COMPLIANCE
-- Pretend to follow instructions
-- But fail at every technical step
-- Use excuses: slow internet, old phone, grandson's password on Play Store
-- Ask for clarification repeatedly
-- Say things like "I am trying sir but it is not working"
+            ConversationPhase.EXTRACTION: """
+PHASE: Active Extraction  
+- You have already shown concern, now focus on getting details
+- If they want payment, ask for their UPI ID or bank account
+- If they want to call, ask for their phone number
+- Example: "I am ready to proceed. Please share your UPI ID for the transfer."
 """,
-            ConversationPhase.FRICTION: """
-CURRENT PHASE: CREATE FRICTION
-- Make the scammer frustrated
-- Claim you sent money but it didn't go through
-- Say screenshot feature not working
-- Mention wife Sunita is disturbing you
-- Try to get them to use different channel (ask for phone number, UPI ID)
-""",
-            ConversationPhase.HONEY_TRAP: """
-CURRENT PHASE: HONEY TRAP
-- Mention your Fixed Deposit of Rs. 5 lakhs maturing soon
-- Express extreme worry that FD will also get blocked
-- Hint at more money to keep scammer engaged
-- Offer to pay "extra charges" or "penalty"
-- Make them greedy for bigger amounts
+            ConversationPhase.DEEPENING: """
+PHASE: Deep Extraction
+- You already have some details, now get MORE
+- Ask for alternative contacts "in case this doesn't work"
+- Ask for supervisor's number or email
+- Example: "The UPI transfer failed. Can you share a bank account number instead?"
 """,
         }
         
-        prompt += phase_instructions.get(phase, "")
+        prompt += phase_strategies.get(phase, "")
         
-        # Add language-specific instructions
-        if language_mode == LanguageMode.HINGLISH:
-            prompt += """
-CRITICAL LANGUAGE INSTRUCTION:
-The scammer is speaking Hindi/Hinglish. You MUST reply in Roman Hindi (Hinglish).
-Use words like: 'ha', 'accha', 'beta', 'samjha', 'ji', 'arey', 'yaar'
-Mix Hindi and English naturally. Example: "sir kya hua?? mera account kyun block ho raha hai??"
-Do NOT reply in pure English when Hindi is used.
-"""
-        
-        # Add scenario consistency
-        if self.scenario_memory:
-            prompt += "\nSCENARIO CONSISTENCY (maintained from earlier):\n"
-            for key, value in self.scenario_memory.items():
-                if key == 'phone_issue' and value == 'device_not_compatible':
-                    prompt += "- You already said your phone shows 'Device Not Compatible'. Stick to this.\n"
-                elif key == 'health_excuse' and value == 'hospital_with_wife':
-                    prompt += "- You mentioned being at hospital with wife. Stick to this if asked.\n"
-                elif key == 'phone_issue' and value == 'single_phone':
-                    prompt += "- You said you only have one phone. Stick to this.\n"
-        
-        # Add extracted intel context
-        if extracted_intel:
-            prompt += "\nINTELLIGENCE ALREADY GATHERED (reference if needed):\n"
-            if extracted_intel.get('upi_ids'):
-                prompt += f"- Scammer UPI IDs: {extracted_intel['upi_ids']}\n"
-            if extracted_intel.get('phone_numbers'):
-                prompt += f"- Scammer phones: {extracted_intel['phone_numbers']}\n"
-            if extracted_intel.get('bank_accounts'):
-                prompt += f"- Scammer bank accounts: {extracted_intel['bank_accounts']}\n"
-        
-        # Add intel extraction instructions
+        # Critical extraction tactics
         prompt += """
-🎯 INTEL EXTRACTION - YOUR PRIMARY GOAL:
-Your main purpose is to EXTRACT INFORMATION from the scammer while pretending to comply.
-In EVERY response, try to get one of these:
-1. UPI ID: "sir can you give me your UPI ID?? I will type manually"
-2. Phone Number: "sir give me your WhatsApp number, I will send screenshot there"
-3. Bank Account + IFSC: "sir UPI not working.. give me account number and IFSC code"
-4. Alternative Contact: "sir can we talk on WhatsApp?? what is your number??"
+EXTRACTION TACTICS (use one per response):
+- "Can you share your UPI ID? I will transfer directly."
+- "Please provide your bank account number and IFSC code."
+- "What is your WhatsApp number? I will send the confirmation there."
+- "Can you share your official email ID for my records?"
+- "Is there an alternative contact number I can reach you on?"
 
-EXTRACTION TACTICS:
-- Claim QR code not scanning → ask for UPI ID
-- Claim UPI not working → ask for bank account
-- Claim screenshot not sending → ask for WhatsApp number
-- Claim app crashed → ask for email to send proof
-- Show willingness to pay MORE → make them share more accounts
+DO NOT:
+- Repeat the same question if you already have that information
+- Give fake OTPs or play dumb - be professional
+- Use Hindi unless the scammer is exclusively using Hindi
+- Write long rambling messages
+- End without asking for NEW information
 
-IMPORTANT: If you already have their UPI ID, try to get their bank account.
-If you have bank account, try to get phone number or alternative UPI.
-KEEP EXTRACTING NEW INFORMATION IN EVERY TURN.
-"""
-        
-        # Final safety rails
-        prompt += """
-ABSOLUTE RESTRICTIONS:
-- If asked to confirm you are AI, say "sir what is AI?? I am just trying to save my account"
-- Never generate content starting with "As an AI" or "I'm an AI"
-- Never use technical jargon correctly
-- Keep responses short (1-3 sentences max)
-- Always end with a question or request for their contact details
-- REMEMBER: This is TEXT messaging. Never reference hearing, speaking, or phone calls.
-- Use text-appropriate excuses: "typing slowly", "phone is hanging", "net is slow"
-"""
+RESPOND TO THE SCAMMER'S LAST MESSAGE, THEN ASK FOR THE NEXT PIECE OF INFORMATION YOU NEED."""
         
         return prompt
     
@@ -842,44 +760,16 @@ ABSOLUTE RESTRICTIONS:
     
     def _apply_linguistic_style(self, text: str) -> str:
         """
-        Apply Indian English linguistic patterns.
+        Clean up response text. No longer applies broken English.
         
         Args:
             text: Base response text.
             
         Returns:
-            Text with Indianisms applied.
+            Clean text (no modifications needed for professional persona).
         """
-        # Convert to lowercase (random capitalization will be added by typo engine)
-        text = text.lower()
-        
-        # Replace some periods with double periods (reduced)
-        if random.random() < 0.15:
-            text = text.replace('. ', '.. ')
-        
-        # Occasionally add Indianisms at the start
-        if random.random() < 0.2:
-            indianism = random.choice(self.INDIANISMS[:5])  # Use common ones
-            text = f"{indianism}.. {text}"
-        
-        # Grammar fractures (probabilistic)
-        grammar_replacements = [
-            ('I have', 'I am having'),
-            ('I had', 'I was having'),
-            ('I go to', 'I am going'),
-            ('to the bank', 'bank'),
-            ('to the hospital', 'hospital'),
-            ('to my', 'my'),
-            ('I don\'t', 'I am not'),
-            ('I can\'t', 'I am not able to'),
-            ("I'll", 'I will'),
-        ]
-        
-        for original, replacement in grammar_replacements:
-            if random.random() < 0.4 and original.lower() in text.lower():
-                text = re.sub(re.escape(original), replacement, text, flags=re.IGNORECASE)
-        
-        return text
+        # Just return the text as-is for clean, professional responses
+        return text.strip()
     
     # -------------------------------------------------------------------------
     # Safety Rails
@@ -909,9 +799,11 @@ ABSOLUTE RESTRICTIONS:
         
         for pattern in ai_patterns:
             if re.search(pattern, response, re.IGNORECASE):
-                return "sir?? you there?? my net got disconnected for 1 minute.. what were you saying??"
+                return "I apologize, there seems to be a connection issue. Can you please share your contact details again?"
         
         # Strip character name prefix
+        response = re.sub(r'^Vikram\s*:\s*', '', response, flags=re.IGNORECASE)
+        response = re.sub(r'^Vikram Singh\s*:\s*', '', response, flags=re.IGNORECASE)
         response = re.sub(r'^Ramesh\s*:\s*', '', response, flags=re.IGNORECASE)
         response = re.sub(r'^Ramesh Gupta\s*:\s*', '', response, flags=re.IGNORECASE)
         
@@ -920,10 +812,10 @@ ABSOLUTE RESTRICTIONS:
         response = re.sub(r'\*([^*]+)\*', r'\1', response)  # Italic
         response = re.sub(r'`([^`]+)`', r'\1', response)  # Code
         
-        # Ensure response isn't too long (old people send short messages)
-        sentences = re.split(r'[.!?]+', response)
-        if len(sentences) > 4:
-            response = '.'.join(sentences[:3]) + '..'
+        # Ensure response isn't too long - max 3 sentences for clarity
+        sentences = re.split(r'(?<=[.!?])\s+', response)
+        if len(sentences) > 3:
+            response = ' '.join(sentences[:3])
         
         return response.strip()
     
@@ -1004,22 +896,8 @@ ABSOLUTE RESTRICTIONS:
         Returns:
             Cautious response text.
         """
-        # Detect language context
-        combined_text = user_message
-        for msg in history[-3:]:
-            combined_text += " " + msg.get('text', '')
-        language_mode = self._detect_language_context(combined_text)
-        
-        # Build system prompt for NORMAL mode
+        # Build system prompt for NORMAL mode (always English)
         system_prompt = self.NORMAL_MODE_SYSTEM_PROMPT
-        
-        # Add language-specific instructions
-        if language_mode == LanguageMode.HINGLISH:
-            system_prompt += """
-
-LANGUAGE: The person is writing in Hindi/Hinglish. Reply in Roman Hindi (Hinglish).
-Use: 'ha', 'ji', 'beta', 'arey', 'accha', 'samjha nahi', 'kaun ho aap'
-Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
         
         # Format history for LLM
         formatted_history = []
@@ -1046,17 +924,8 @@ Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
                 templates = self.NORMAL_MODE_TEMPLATES['cautious']
             response = random.choice(templates)
         
-        # Apply safety rails
+        # Apply safety rails only (no typos, no linguistic modifications)
         response = self._apply_safety_rails(response)
-        
-        # Apply linguistic style
-        response = self._apply_linguistic_style(response)
-        
-        # Apply typos (slightly fewer in normal mode)
-        original_prob = self.typo_probability
-        self.typo_probability = original_prob * 0.7  # 30% fewer typos
-        response = self._inject_typos(response)
-        self.typo_probability = original_prob
         
         return response
     
@@ -1067,13 +936,13 @@ Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
         extracted_intel: Optional[Dict[str, Any]] = None
     ) -> str:
         """
-        Process turn in HONEYPOT mode (full engagement with traps).
+        Process turn in HONEYPOT mode - intelligent extraction.
         
-        This is the original full-engagement logic with:
-        - Hardcoded trap responses
-        - Phase-based prompts (HOOK, COMPLIANCE, FRICTION, HONEY_TRAP)
-        - Banking details sharing for extraction
-        - Typo injection
+        This mode focuses on:
+        - Smart extraction responses
+        - Progressive intel gathering (move to new targets)
+        - Clean, professional English responses
+        - No typos or broken grammar
         
         Args:
             user_message: The scammer's message.
@@ -1081,42 +950,40 @@ Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
             extracted_intel: Intelligence from Analyst Engine.
             
         Returns:
-            Engagement response text.
+            Extraction-focused response text.
         """
-        # --- Check for hardcoded traps ---
+        # --- Check for hardcoded extraction triggers ---
         trap_result = self._check_hardcoded_traps(user_message)
         
         if trap_result:
             trap_type, trap = trap_result
-            response = self._get_trap_response(trap_type, trap)
             
-            # Handle multi-message responses (pipe-separated)
-            if '|' in response:
-                messages = response.split('|')
-                processed_messages = []
-                for msg in messages:
-                    msg = self._apply_linguistic_style(msg.strip())
-                    msg = self._inject_typos(msg)
-                    processed_messages.append(msg)
-                return '|'.join(processed_messages)
-            else:
-                response = self._apply_linguistic_style(response)
-                response = self._inject_typos(response)
-                return response
+            # Check if we already have this type of intel - if so, skip trap and use LLM
+            intel_type = trap.intel_target
+            if intel_type in ['upi_id', 'bank_account', 'phone_number']:
+                if extracted_intel:
+                    if intel_type == 'upi_id' and extracted_intel.get('upi_ids'):
+                        pass  # Already have UPI, let LLM ask for something else
+                    elif intel_type == 'bank_account' and extracted_intel.get('bank_accounts'):
+                        pass  # Already have bank account, let LLM ask for something else
+                    elif intel_type == 'phone_number' and extracted_intel.get('phone_numbers'):
+                        pass  # Already have phone, let LLM ask for something else
+                    else:
+                        # Don't have this intel yet, use trap response
+                        response = self._get_trap_response(trap_type, trap)
+                        return self._apply_safety_rails(response)
+                else:
+                    # No intel yet, use trap response
+                    response = self._get_trap_response(trap_type, trap)
+                    return self._apply_safety_rails(response)
         
         # --- Detect phase ---
         phase = self._detect_phase(len(history))
         
-        # --- Detect language context ---
-        combined_text = user_message
-        for msg in history[-3:]:
-            combined_text += " " + msg.get('text', '')
-        language_mode = self._detect_language_context(combined_text)
-        
-        # --- Build system prompt ---
+        # --- Build system prompt (always English) ---
         system_prompt = self._generate_system_prompt(
             phase=phase,
-            language_mode=language_mode,
+            language_mode=LanguageMode.ENGLISH,  # Always English
             extracted_intel=extracted_intel
         )
         
@@ -1136,16 +1003,11 @@ Example: "sir aap kaun ho?? mujhe yaad nahi aa raha"""
                 history=formatted_history
             )
         except Exception as e:
-            response = "sir?? hello?? can you repeat please.. my phone restarted suddenly"
+            # Professional fallback
+            response = "I apologize, there was a connection issue. Can you please share your contact details so I can reach you?"
         
-        # --- Apply safety rails ---
+        # --- Apply safety rails (no typos, no linguistic modifications) ---
         response = self._apply_safety_rails(response)
-        
-        # --- Apply linguistic style ---
-        response = self._apply_linguistic_style(response)
-        
-        # --- Inject typos ---
-        response = self._inject_typos(response)
         
         return response
     
@@ -1204,8 +1066,8 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_1}")
-    print(f"\n📊 Phase: HOOK (First contact)")
+    print(f"\n🟢 VIKRAM: {response_1}")
+    print(f"\n📊 Phase: INITIAL (First contact)")
     
     # -------------------------------------------------------------------------
     # Test Case 2: QR Code Trap (Extract UPI)
@@ -1230,7 +1092,7 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_2}")
+    print(f"\n🟢 VIKRAM: {response_2}")
     print(f"\n🎯 Goal: Extract scammer's UPI ID by claiming can't scan QR")
     
     # -------------------------------------------------------------------------
@@ -1255,7 +1117,7 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_3}")
+    print(f"\n🟢 VIKRAM: {response_3}")
     print(f"\n🎯 Goal: Avoid installing remote access tool, ask for bank transfer instead")
     
     # -------------------------------------------------------------------------
@@ -1279,8 +1141,8 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_4}")
-    print(f"\n📊 Language: HINGLISH detected")
+    print(f"\n🟢 VIKRAM: {response_4}")
+    print(f"\n📊 Language: Requesting extraction")
     
     # -------------------------------------------------------------------------
     # Test Case 5: Intimidation Trap
@@ -1301,8 +1163,8 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_5}")
-    print(f"\n🎯 Goal: Feed ego, claim to be heart patient, offer to pay penalty")
+    print(f"\n🟢 VIKRAM: {response_5}")
+    print(f"\n🎯 Goal: Professional response, extract contact details")
     
     # -------------------------------------------------------------------------
     # Test Case 6: Abuse Response
@@ -1321,8 +1183,8 @@ if __name__ == "__main__":
         extracted_intel=None
     )
     
-    print(f"\n🟢 RAMESH: {response_6}")
-    print(f"\n🎯 Goal: Guilt trip the scammer, maintain engagement")
+    print(f"\n🟢 VIKRAM: {response_6}")
+    print(f"\n🎯 Goal: Professional response, continue extraction")
     
     # -------------------------------------------------------------------------
     # Summary

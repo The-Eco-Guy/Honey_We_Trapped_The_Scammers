@@ -75,7 +75,7 @@ def print_agent(text: str, mode: str):
         "HONEYPOT": Colors.GREEN,
         "END_CONVERSATION": Colors.DIM
     }.get(mode, Colors.RESET)
-    print(f"{mode_color}[RAMESH @{mode}] {text}{Colors.RESET}")
+    print(f"{mode_color}[VIKRAM @{mode}] {text}{Colors.RESET}")
 
 
 def print_analysis(is_scam: bool, confidence: float, detection: str, reason: str):
@@ -268,7 +268,7 @@ class HoneypotSimulator:
         print_header("HONEYPOT SIMULATOR")
         print(f"Session: {Colors.CYAN}{self.session_id}{Colors.RESET}")
         print(f"Storage: {Colors.DIM}{self.store.storage_dir}{Colors.RESET}")
-        print(f"\nYou are the SCAMMER. Try to scam 'Ramesh Gupta'.")
+        print(f"\nYou are the SCAMMER. Try to scam 'Vikram Singh'.")
         print(f"Commands: {Colors.DIM}/summary, /intel, /quit, /help{Colors.RESET}\n")
         
         # Show existing turns if resuming
@@ -307,7 +307,7 @@ class HoneypotSimulator:
                         print_section("CONVERSATION HISTORY")
                         for turn in self.session.turns[-5:]:
                             print(f"  [{turn.turn_number}] SCAMMER: {turn.scammer_message[:50]}...")
-                            print(f"      RAMESH: {turn.agent_response[:50]}...")
+                            print(f"      VIKRAM: {turn.agent_response[:50]}...")
                         continue
                     elif cmd == '/help':
                         print(f"\n{Colors.CYAN}Commands:{Colors.RESET}")

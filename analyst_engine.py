@@ -30,10 +30,10 @@ class DetectionResult(Enum):
     """
     Classification of detection outcome based on confidence thresholds.
     
-    Thresholds:
-    - SCAM_CONFIRMED: confidence >= 0.7 (high confidence scam)
-    - INCONCLUSIVE: 0.3 <= confidence < 0.7 (uncertain, needs more data)
-    - SAFE_CONFIRMED: confidence < 0.3 (likely safe conversation)
+    Thresholds (lowered for faster detection):
+    - SCAM_CONFIRMED: confidence >= 0.5 (moderate confidence scam)
+    - INCONCLUSIVE: 0.2 <= confidence < 0.5 (uncertain, needs more data)
+    - SAFE_CONFIRMED: confidence < 0.2 (likely safe conversation)
     """
     SCAM_CONFIRMED = "scam_confirmed"
     INCONCLUSIVE = "inconclusive"
@@ -42,9 +42,9 @@ class DetectionResult(Enum):
     @classmethod
     def from_confidence(cls, confidence: float) -> 'DetectionResult':
         """Map confidence score to detection result."""
-        if confidence >= 0.7:
+        if confidence >= 0.5:  # Lowered from 0.7 for faster scam confirmation
             return cls.SCAM_CONFIRMED
-        elif confidence >= 0.3:
+        elif confidence >= 0.2:  # Lowered from 0.3
             return cls.INCONCLUSIVE
         else:
             return cls.SAFE_CONFIRMED

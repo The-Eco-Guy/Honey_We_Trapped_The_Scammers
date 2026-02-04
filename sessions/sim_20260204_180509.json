@@ -1,0 +1,45 @@
+{
+  "session_id": "sim_20260204_180509",
+  "created_at": "2026-02-04T18:05:09.230821",
+  "updated_at": "2026-02-04T18:05:39.479618",
+  "status": "active",
+  "current_mode": "NORMAL",
+  "turn_count": 1,
+  "turns": [
+    {
+      "turn_number": 1,
+      "timestamp": "2026-02-04T18:05:39.479585",
+      "scammer_message": "YOUR ACCOUNT HAS BEEN HACKED. SEND 10000 TO U N H A C K it",
+      "agent_response": "sir. helpo. my phone suddenly hung..",
+      "is_scam": true,
+      "confidence": 0.5,
+      "detection_result": "inconclusive",
+      "agent_mode": "NORMAL",
+      "intel_extracted": {
+        "upi_ids": [],
+        "phone_numbers": [],
+        "bank_accounts": [],
+        "urls": [],
+        "suspicious_keywords": [
+          "send"
+        ]
+      }
+    }
+  ],
+  "aggregated_intel": {
+    "upi_ids": [],
+    "phone_numbers": [],
+    "bank_accounts": [],
+    "urls": [],
+    "emails": [],
+    "crypto_wallets": [],
+    "social_handles": [],
+    "suspicious_keywords": [
+      "send"
+    ]
+  },
+  "metadata": {
+    "simulator": true,
+    "started": "2026-02-04T18:05:09.230803"
+  }
+}
